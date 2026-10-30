@@ -13,8 +13,8 @@ def rollup(findings):
     return counts
 
 
-def render_text(findings, counts, host):
-    order = sorted(findings, key=lambda f: (-SEVERITY.get(f.verdict, 0), f.layer, f.location))
+def render_text(findings, counts, host, limit=15):
+    order = sorted(findings, key=lambda f: (-f.priority, -SEVERITY.get(f.verdict, 0), f.layer, f.location))
     lines = []
     lines.append("=" * 78)
     lines.append(" Brotli2Shell / HTTP2Shell (CVE-2026-111497) exposure report")
@@ -25,15 +25,19 @@ def render_text(findings, counts, host):
     lines.append("-" * 78)
     if not findings:
         lines.append(" No Brotli decoder copies or decode paths found in scanned scope.")
-    for f in order:
-        if f.verdict in (PATCHED, CLEAN):
-            continue
-        lines.append(f"[{f.verdict}] ({f.confidence}) {f.layer}")
+    actionable = [f for f in order if f.verdict not in (PATCHED, CLEAN)]
+    for f in actionable[:limit]:
+        lines.append(f"[{f.verdict}] ({f.confidence}) {f.layer}  priority={f.priority} reach={f.reach}")
         lines.append(f"    component : {f.component}" + (f"  {f.version}" if f.version else ""))
         lines.append(f"    location  : {f.location}")
         lines.append(f"    evidence  : {f.evidence}")
         if f.note:
             lines.append(f"    note      : {f.note}")
+        if f.fix:
+            lines.append(f"    fix       : {f.fix}")
+    if len(actionable) > limit:
+        lines.append(f"... and {len(actionable) - limit} more lower-priority finding(s); "
+                     "use --format json for the full list.")
     shown_patched = [f for f in order if f.verdict in (PATCHED, CLEAN)]
     if shown_patched:
         lines.append("-" * 78)

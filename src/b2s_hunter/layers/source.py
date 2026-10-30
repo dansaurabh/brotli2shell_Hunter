@@ -8,6 +8,11 @@ import re
 from .. import ruledata as rd
 from ..model import POTENTIAL, Finding
 
+# Third-party / generated trees: their HTTP-client code is not the project's own decode path.
+SKIP_DIRS = {".git", "node_modules", "venv", ".venv", "env", ".tox", "site-packages",
+             "dist-packages", "__pycache__", ".mypy_cache", ".pytest_cache", "vendor",
+             "build", "dist", ".eggs"}
+
 REACH_PATTERNS = {label: re.compile(rx) for label, rx in rd.REACH_PATTERNS.items()}
 
 
@@ -16,10 +21,7 @@ def layer_source(src_roots, findings):
         if not os.path.isdir(root):
             continue
         for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-            if ".git" in dirnames:
-                dirnames.remove(".git")
-            if "node_modules" in dirnames:
-                dirnames.remove("node_modules")
+            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
             for name in filenames:
                 ext = os.path.splitext(name)[1].lower()
                 low = name.lower()
