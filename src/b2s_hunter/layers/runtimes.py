@@ -43,24 +43,4 @@ def layer_runtimes(findings):
                 evidence="curl built with brotli feature; check the libbrotlidec it links (ldd/otool)",
                 note="client-side decode path; verify the linked lib via the marker layer",
             ))
-    # Running processes still mapping a deleted (old) libbrotli  (Linux only)
-    if platform.system() == "Linux" and os.path.isdir("/proc"):
-        for pid in os.listdir("/proc"):
-            if not pid.isdigit():
-                continue
-            maps = f"/proc/{pid}/maps"
-            try:
-                with open(maps, "r", errors="ignore") as fh:
-                    content = fh.read()
-            except Exception:
-                continue
-            for mline in content.splitlines():
-                if "libbrotli" in mline and "(deleted)" in mline:
-                    exe = os.path.realpath(f"/proc/{pid}/exe") if os.path.exists(f"/proc/{pid}/exe") else "?"
-                    findings.append(Finding(
-                        layer="runtime:process", component="process mapping deleted libbrotli",
-                        location=f"pid {pid} ({exe})", verdict=POTENTIAL, confidence="medium",
-                        evidence="still running an old libbrotli held in memory after on-disk update",
-                        note="restart the service to load the patched library",
-                    ))
-                    break
+    # deleted-lib-in-memory detection lives in layers/memres.py
